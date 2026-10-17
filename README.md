@@ -46,7 +46,6 @@
   - **Dark**, **Light**, and **System** appearance themes.
   - Always-on-top window pin toggle.
 - **🔄 Auto-Update Notification:** Automatically alerts you inside DaVinci Resolve whenever a new version is published on GitHub.
-- **⚡ Zero Background RAM Footprint:** Closes instantly with 0ms delay and completely frees up memory when closed.
 
 ---
 
@@ -55,7 +54,6 @@
 1. **DaVinci Resolve Studio 18 or later**  
    *(Note: Workflow Integrations is a native feature of DaVinci Resolve Studio).*
 2. **Windows 10 / 11 (64-bit)**
-3. **Python 3.10+** *(Only required if building from source or using the manual Python installer; NOT needed if using `QuickSFX-Setup.exe`).*
 
 ---
 
@@ -145,7 +143,6 @@ To remove QuickSFX from DaVinci Resolve:
   - **Koyu (Dark)**, **Aydınlık (Light)** ve **Sistem** temaları.
   - Pencereyi her zaman üstte tutma (Pin) özelliği.
 - **🔄 Otomatik Güncelleme Bildirimi:** GitHub'da yeni bir sürüm çıktığında DaVinci Resolve içinde parlayan bir rozetle size anında haber verir.
-- **⚡ Sıfır RAM Yükü:** Paneli kapattığınız anda 0 ms'de kapanır ve arka planda çalışan hiçbir işlemci/RAM yükü bırakmaz.
 
 ---
 
@@ -154,7 +151,6 @@ To remove QuickSFX from DaVinci Resolve:
 1. **DaVinci Resolve Studio 18 veya daha yenisi**  
    *(Not: Workflow Integrations özelliği DaVinci Resolve Studio sürümüne aittir).*
 2. **Windows 10 / 11 (64-bit)**
-3. **Python 3.10+** *(Sadece kaynak koddan veya manuel kurmak isteyenler için gereklidir; `QuickSFX-Setup.exe` kullananlar için **gerekmez**).*
 
 ---
 
