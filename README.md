@@ -15,16 +15,14 @@
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License: MIT">
 </p>
 
-<p align="center">
-  <a href="#-english"><img src="https://img.shields.io/badge/Read%20in-English%20%F0%9F%87%AC%F0%9F%87%A7-1f6feb?style=for-the-badge" alt="Read in English"></a>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="#-türkçe"><img src="https://img.shields.io/badge/T%C3%BCrk%C3%A7e%20Oku-%F0%9F%87%B9%F0%9F%87%B7-e02424?style=for-the-badge" alt="Türkçe Oku"></a>
-</p>
+<div align="center">
+  <a href="#en-setup-and-usage-guide" style="text-decoration:none;"><img src="https://img.shields.io/badge/Language-English-blue?style=for-the-badge" alt="English"></a> &nbsp;&nbsp; <a href="#tr-kurulum-ve-kullanım-rehberi" style="text-decoration:none;"><img src="https://img.shields.io/badge/Dil-Türkçe-red?style=for-the-badge" alt="Türkçe"></a>
+</div>
 
 ---
 
-<a name="-english"></a>
-# 🇬🇧 English
+<a name="en-setup-and-usage-guide" id="en-setup-and-usage-guide"></a>
+# 🇬🇧 English: Setup and Usage Guide
 
 **QuickSFX** is a native **Workflow Integration plugin** for **DaVinci Resolve Studio**. It lets video editors browse, search, preview, and instantly drop thousands of free sound effects from multiple top platforms directly into their project timeline without ever leaving DaVinci Resolve.
 
@@ -122,8 +120,8 @@ To remove QuickSFX from DaVinci Resolve:
 ---
 ---
 
-<a name="-türkçe"></a>
-# 🇹🇷 Türkçe
+<a name="tr-kurulum-ve-kullanım-rehberi" id="tr-kurulum-ve-kullanım-rehberi"></a>
+# 🇹🇷 Türkçe: Kurulum ve Kullanım Rehberi
 
 **QuickSFX**, **DaVinci Resolve Studio** için geliştirilmiş yerel bir **Workflow Integration (İş Akışı Entegrasyonu)** eklentisidir. Video editörlerinin DaVinci Resolve'dan hiç çıkmadan binlerce ücretsiz ses efektini aramasını, önizlemesini ve tek tıkla timeline'a eklemesini sağlar.
 
