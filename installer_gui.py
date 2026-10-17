@@ -7,6 +7,9 @@ import shutil
 import zipfile
 import threading
 import subprocess
+import time
+import stat
+import urllib.request
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -32,6 +35,82 @@ def get_resource_path(relative_path):
     except AttributeError:
         base_path = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_path, relative_path)
+
+
+def kill_quicksfx_processes():
+    """Forcefully terminates quicksfx-engine or any orphan processes locking plugin files."""
+    try:
+        # 1. Graceful HTTP shutdown attempt if server is listening
+        try:
+            req = urllib.request.Request("http://127.0.0.1:8765/api/shutdown")
+            urllib.request.urlopen(req, timeout=0.4)
+        except Exception:
+            pass
+
+        # 2. Forceful process termination via taskkill
+        subprocess.run(["taskkill", "/F", "/IM", "quicksfx-engine.exe", "/T"], capture_output=True)
+    except Exception:
+        pass
+    time.sleep(0.5)
+
+
+def clean_plugin_dir(target_dir, for_uninstall=False):
+    """Deletes files cleanly, handling locks, read-only flags and running Resolve instances."""
+    kill_quicksfx_processes()
+    if not os.path.exists(target_dir):
+        return True
+
+    locked = []
+    for root, dirs, files in os.walk(target_dir, topdown=False):
+        for f in files:
+            fp = os.path.join(root, f)
+            try:
+                os.chmod(fp, stat.S_IWRITE)
+                os.remove(fp)
+            except Exception:
+                locked.append(fp)
+        for d in dirs:
+            dp = os.path.join(root, d)
+            try:
+                os.rmdir(dp)
+            except Exception:
+                pass
+
+    try:
+        os.rmdir(target_dir)
+    except Exception:
+        pass
+
+    if for_uninstall and locked:
+        names = [os.path.basename(f) for f in locked]
+        if any("WorkflowIntegration" in n for n in names):
+            raise RuntimeError(
+                "DaVinci Resolve is currently open. Please close DaVinci Resolve and run uninstaller again."
+            )
+        raise RuntimeError(f"Could not remove locked files: {', '.join(names)}")
+    return True
+
+
+def safe_extract_zip(zip_path, target_root):
+    """Extracts zip archive, safely handling locked files without crashing."""
+    with zipfile.ZipFile(zip_path, "r") as z:
+        for member in z.infolist():
+            dest_path = os.path.join(target_root, member.filename)
+            if member.is_dir():
+                os.makedirs(dest_path, exist_ok=True)
+                continue
+            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+            try:
+                if os.path.exists(dest_path):
+                    try:
+                        os.chmod(dest_path, stat.S_IWRITE)
+                    except Exception:
+                        pass
+                with z.open(member) as src, open(dest_path, "wb") as dst:
+                    shutil.copyfileobj(src, dst)
+            except (PermissionError, OSError):
+                # File is locked by Resolve (e.g. WorkflowIntegration.node), skip safely
+                pass
 
 
 class QuickSFXInstallerApp:
@@ -218,13 +297,21 @@ class QuickSFXInstallerApp:
 
     def _run_install(self):
         try:
+            self.log_label.config(text="Stopping background processes...", fg=COLOR_TEXT)
+            kill_quicksfx_processes()
+
             os.makedirs(DEST_ROOT, exist_ok=True)
+
+            # Clean previous installation directory to prevent in-use overwrite errors
+            if os.path.exists(PLUGIN_DIR):
+                self.log_label.config(text="Cleaning previous installation...", fg=COLOR_TEXT)
+                clean_plugin_dir(PLUGIN_DIR, for_uninstall=False)
 
             # Check if bundle.zip exists inside resource directory
             bundle_zip = get_resource_path("bundle.zip")
             if os.path.isfile(bundle_zip):
-                with zipfile.ZipFile(bundle_zip, "r") as z:
-                    z.extractall(DEST_ROOT)
+                self.log_label.config(text="Deploying files into DaVinci Resolve...", fg=COLOR_TEXT)
+                safe_extract_zip(bundle_zip, DEST_ROOT)
             else:
                 # If running directly from dev source repository
                 src_dir = get_resource_path(os.path.join("resolve-plugin", "com.serta.sfxfinder"))
@@ -284,7 +371,7 @@ class QuickSFXInstallerApp:
         self.log_label.config(text=f"Error: {error_msg}", fg=COLOR_DANGER)
         self.install_btn.config(state="normal")
         self.uninstall_btn.config(state="normal")
-        messagebox.showerror("Installation Error", f"Could not install QuickSFX:\n\n{error_msg}\n\nTry running this installer as Administrator.")
+        messagebox.showerror("Installation Error", f"Could not install QuickSFX:\n\n{error_msg}\n\nPlease close DaVinci Resolve or try running as Administrator.")
 
     def on_uninstall(self):
         if not os.path.exists(PLUGIN_DIR):
@@ -292,15 +379,36 @@ class QuickSFXInstallerApp:
             return
 
         if messagebox.askyesno("Uninstall QuickSFX", "Are you sure you want to remove QuickSFX from DaVinci Resolve?"):
-            try:
-                shutil.rmtree(PLUGIN_DIR)
-                self.status_title.config(text="Uninstalled", fg=COLOR_MUTED)
-                self.log_label.config(text="QuickSFX was successfully removed.", fg=COLOR_TEXT)
-                self.install_btn.config(text="⚡ Install QuickSFX", state="normal", bg=COLOR_ACCENT)
-                self.uninstall_btn.config(state="disabled")
-                messagebox.showinfo("QuickSFX", "QuickSFX has been uninstalled.")
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to uninstall: {e}\nTry running as Administrator.")
+            self.install_btn.config(state="disabled")
+            self.uninstall_btn.config(state="disabled")
+            self.progress.start(10)
+            self.log_label.config(text="Stopping QuickSFX and uninstalling...", fg=COLOR_TEXT)
+
+            def _do_uninstall():
+                try:
+                    clean_plugin_dir(PLUGIN_DIR, for_uninstall=True)
+                    self.root.after(0, self._uninstall_success)
+                except Exception as e:
+                    self.root.after(0, lambda: self._uninstall_failed(str(e)))
+
+            threading.Thread(target=_do_uninstall, daemon=True).start()
+
+    def _uninstall_success(self):
+        self.progress.stop()
+        self.status_title.config(text="Uninstalled", fg=COLOR_MUTED)
+        self.status_desc.config(text="QuickSFX was successfully removed from DaVinci Resolve.")
+        self.log_label.config(text="QuickSFX uninstalled.", fg=COLOR_TEXT)
+        self.install_btn.config(text="⚡ Install QuickSFX", state="normal", bg=COLOR_ACCENT)
+        self.uninstall_btn.config(state="disabled")
+        messagebox.showinfo("QuickSFX", "QuickSFX has been uninstalled.")
+
+    def _uninstall_failed(self, error_msg):
+        self.progress.stop()
+        self.status_title.config(text="Uninstall Failed", fg=COLOR_DANGER)
+        self.log_label.config(text=f"Error: {error_msg}", fg=COLOR_DANGER)
+        self.install_btn.config(state="normal")
+        self.uninstall_btn.config(state="normal")
+        messagebox.showerror("Error", f"Failed to uninstall: {error_msg}\n\nPlease close DaVinci Resolve or try running as Administrator.")
 
     def launch_resolve(self):
         if os.path.isfile(RESOLVE_EXE):
@@ -312,6 +420,19 @@ class QuickSFXInstallerApp:
 
 
 def main():
+    if "--silent" in sys.argv or "/S" in sys.argv or "-silent" in sys.argv:
+        try:
+            kill_quicksfx_processes()
+            os.makedirs(DEST_ROOT, exist_ok=True)
+            bundle_zip = get_resource_path("bundle.zip")
+            if os.path.isfile(bundle_zip):
+                if os.path.exists(PLUGIN_DIR):
+                    clean_plugin_dir(PLUGIN_DIR, for_uninstall=False)
+                safe_extract_zip(bundle_zip, DEST_ROOT)
+            sys.exit(0)
+        except Exception:
+            sys.exit(1)
+
     root = tk.Tk()
     app = QuickSFXInstallerApp(root)
     root.mainloop()

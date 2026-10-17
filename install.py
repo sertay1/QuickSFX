@@ -42,6 +42,13 @@ def main():
         print(f"[ERROR] Plugin source directory not found: {PLUGIN_SRC}")
         sys.exit(1)
 
+    # 0. Kill running engine if active
+    try:
+        import subprocess
+        subprocess.run(["taskkill", "/F", "/IM", "quicksfx-engine.exe", "/T"], capture_output=True)
+    except Exception:
+        pass
+
     # 1. Ensure WorkflowIntegration.node exists
     node_dest = os.path.join(PLUGIN_SRC, "WorkflowIntegration.node")
     if not os.path.isfile(node_dest):

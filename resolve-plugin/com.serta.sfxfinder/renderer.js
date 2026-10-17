@@ -73,7 +73,12 @@ const I18N = {
     checkUpdates: 'Güncellemeleri Denetle',
     checkingUpdates: 'Kontrol ediliyor…',
     updateNow: 'Güncelle',
-    downloadUpdate: 'İndir',
+    downloadUpdate: 'İndir ve Güncelle',
+    downloadingUpdate: 'İndiriliyor…',
+    installingUpdate: 'Uygulanıyor…',
+    updateSuccess: 'Güncellendi! Yenileniyor…',
+    updateFailed: 'Güncelleme başarısız',
+    resetTest: 'Testi Sıfırla (v1.0.0)',
     shortcutsTitle: 'Klavye Kısayolları',
     shortcuts: [
       ['/', 'Arama kutusuna odaklan'],
@@ -132,7 +137,12 @@ const I18N = {
     checkUpdates: 'Check for Updates',
     checkingUpdates: 'Checking…',
     updateNow: 'Update',
-    downloadUpdate: 'Download',
+    downloadUpdate: 'Download & Update',
+    downloadingUpdate: 'Downloading…',
+    installingUpdate: 'Applying…',
+    updateSuccess: 'Updated! Reloading…',
+    updateFailed: 'Update failed',
+    resetTest: 'Reset Test (to v1.0.0)',
     shortcutsTitle: 'Keyboard Shortcuts',
     shortcuts: [
       ['/', 'Focus search input'],
@@ -831,6 +841,7 @@ $('#openFolderBtn').addEventListener('click', async () => {
 
 // ---------------- updates ----------------
 let cachedUpdate = null;
+let isUpdating = false;
 
 function renderUpdateUI() {
   const badge = $('#updateBadge');
@@ -838,13 +849,24 @@ function renderUpdateUI() {
   const vNum = $('#versionNum');
   const vStatus = $('#versionStatus');
   const chkBtn = $('#checkUpdateBtn');
+  const resetBtn = $('#resetTestBtn');
 
   const curVer = cachedUpdate?.currentVersion || '1.0.0';
   if (vNum) vNum.textContent = `QuickSFX v${curVer}`;
 
+  // If user updated to 1.1.1 in test mode, show button to reset back to 1.0.0 for re-testing
+  if (resetBtn) {
+    resetBtn.style.display = (curVer === '1.1.1') ? 'inline-block' : 'none';
+    resetBtn.textContent = t('resetTest');
+  }
+
   if (cachedUpdate && cachedUpdate.updateAvailable) {
     if (badge && badgeText) {
-      badgeText.textContent = `${cachedUpdate.latestVersion ? 'v' + cachedUpdate.latestVersion : ''} ${t('updateNow')}`.trim();
+      const prefix = state.prefs.lang === 'tr' ? 'Güncelleme' : 'Update';
+      const cleanVer = (cachedUpdate.latestVersion || '').replace(/^[^\d]*/, '');
+      const verStr = cleanVer ? `V${cleanVer}` : '';
+      badgeText.textContent = `${prefix} ${verStr}`.trim();
+      badge.title = `${t('versionUpdateAvailable')}: ${verStr} (${t('updateNow')})`;
       badge.style.display = 'inline-flex';
     }
     if (vStatus) {
@@ -866,11 +888,54 @@ function renderUpdateUI() {
   }
 }
 
-function handleUpdateClick() {
-  if (cachedUpdate && (cachedUpdate.downloadUrl || cachedUpdate.releaseUrl)) {
-    window.sfx?.openExternal?.(cachedUpdate.downloadUrl || cachedUpdate.releaseUrl);
-  } else {
-    window.sfx?.openExternal?.('https://github.com/sertay1/QuickSFX/releases/latest');
+async function handleUpdateClick() {
+  if (isUpdating) return;
+  if (!cachedUpdate || !cachedUpdate.updateAvailable) return;
+
+  isUpdating = true;
+  const badge = $('#updateBadge');
+  const badgeText = $('#updateBadgeText');
+  const chkBtn = $('#checkUpdateBtn');
+  const vStatus = $('#versionStatus');
+
+  if (badge) badge.classList.add('updating');
+  if (chkBtn) chkBtn.disabled = true;
+
+  const onProgress = (data) => {
+    const pct = data.percent || 0;
+    const stage = data.stage || 'downloading';
+    let label = `${t('downloadingUpdate')} %${pct}`;
+    if (stage === 'installing') label = t('installingUpdate');
+    if (stage === 'done') label = t('updateSuccess');
+
+    if (badgeText) badgeText.textContent = label;
+    if (chkBtn) chkBtn.textContent = label;
+    if (vStatus) vStatus.textContent = label;
+  };
+
+  window.sfx?.onUpdateProgress?.(onProgress);
+
+  try {
+    const res = await window.sfx?.applyUpdate?.(cachedUpdate);
+    if (res && res.success) {
+      if (badgeText) badgeText.textContent = '✓ ' + t('updateSuccess');
+      if (chkBtn) chkBtn.textContent = '✓ ' + t('updateSuccess');
+      toast(`🎉 ${t('updateSuccess')}`, 'ok');
+
+      localStorage.setItem('qsf_just_updated', res.version || cachedUpdate.latestVersion);
+
+      setTimeout(() => {
+        window.sfx?.reloadWindow?.();
+      }, 900);
+    } else {
+      throw new Error(res?.error || 'Update failed');
+    }
+  } catch (err) {
+    isUpdating = false;
+    if (badge) badge.classList.remove('updating');
+    if (chkBtn) chkBtn.disabled = false;
+    renderUpdateUI();
+    toast(`${t('updateFailed')}: ${err.message || err}`, 'err');
   }
 }
 
@@ -911,6 +976,18 @@ $('#checkUpdateBtn')?.addEventListener('click', () => {
   }
 });
 
+$('#resetTestBtn')?.addEventListener('click', async () => {
+  try {
+    await window.sfx?.resetTestVersion?.();
+    toast('Test sürümü sıfırlandı: v1.0.0. Yenileniyor…', 'ok');
+    setTimeout(() => {
+      window.sfx?.reloadWindow?.();
+    }, 700);
+  } catch (e) {
+    toast('Sıfırlanamadı: ' + e.message, 'err');
+  }
+});
+
 // ---------------- boot ----------------
 (async function boot() {
   const v = localStorage.getItem('vol');
@@ -926,6 +1003,14 @@ $('#checkUpdateBtn')?.addEventListener('click', () => {
   applyInsertMode(state.prefs.insertMode);
   applyLanguage(state.prefs.lang);
   checkForUpdates(false);
+
+  const justUpdated = localStorage.getItem('qsf_just_updated');
+  if (justUpdated) {
+    localStorage.removeItem('qsf_just_updated');
+    setTimeout(() => {
+      toast(`🎉 QuickSFX v${justUpdated} başarıyla yüklendi!`, 'ok');
+    }, 450);
+  }
 
   skeleton();
   refreshStatus();

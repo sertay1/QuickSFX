@@ -81,13 +81,17 @@ def compile_installer():
 
     subprocess.check_call(cmd, cwd=HERE)
     exe_path = os.path.join(HERE, "dist", "QuickSFX-Setup.exe")
+    zip_out = os.path.join(HERE, "dist", "QuickSFX-Plugin.zip")
+    if os.path.isfile(BUNDLE_ZIP):
+        shutil.copy2(BUNDLE_ZIP, zip_out)
     if os.path.isfile(exe_path):
         print()
         print("=" * 60)
-        print(f"[SUCCESS] Standalone Installer Built Successfully!")
+        print(f"[SUCCESS] Standalone Installer & Plugin ZIP Built Successfully!")
         print(f"Installer: {exe_path}")
+        print(f"Plugin ZIP: {zip_out}")
         print(f"Size: {os.path.getsize(exe_path) / (1024*1024):.1f} MB")
-        print("Users can simply download and double-click QuickSFX-Setup.exe!")
+        print("Users can download QuickSFX-Setup.exe or update automatically in-app!")
         print("=" * 60)
 
 
