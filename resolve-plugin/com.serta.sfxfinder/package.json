@@ -1,0 +1,6 @@
+{
+    "name": "quick-sfx",
+    "version": "1.0.0",
+    "description": "QuickSFX - DaVinci Resolve Workflow Integration",
+    "main": "main.js"
+}

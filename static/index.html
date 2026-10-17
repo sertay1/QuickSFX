@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DaVinci Resolve - Birleşik Ses Efekti Stüdyosu</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --bg-main: #111114;
+      --bg-header: #17171d;
+      --bg-card: #1c1c24;
+      --bg-card-hover: #22222c;
+      --border-color: #2b2b38;
+      --text-main: #f1f1f4;
+      --text-muted: #8e8ea0;
+      --accent-blue: #3b82f6;
+      --accent-blue-hover: #2563eb;
+      --accent-green: #10b981;
+      --accent-green-hover: #059669;
+      --accent-orange: #f97316;
+      --accent-red: #ef4444;
+      --accent-purple: #8b5cf6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top Navigation & Status Bar */
+    header {
+      background-color: var(--bg-header);
+      border-bottom: 1px solid var(--border-color);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .resolve-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: #121217;
+      border: 1px solid var(--border-color);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--accent-red);
+    }
+
+    .status-dot.online {
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    }
+
+    .project-info {
+      font-weight: 500;
+      color: var(--text-main);
+    }
+
+    .timecode-badge {
+      font-family: monospace;
+      font-size: 11px;
+      background: #252530;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #93c5fd;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-icon {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      color: var(--text-main);
+      background: #23232e;
+      border-color: #404052;
+    }
+
+    /* Platform Filter Checkboxes / Chips */
+    .filter-section {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .filter-section::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-right: 2px;
+      white-space: nowrap;
+    }
+
+    .platform-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: #171720;
+      color: var(--text-muted);
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .platform-chip:hover {
+      border-color: #444458;
+      color: var(--text-main);
+    }
+
+    /* Active States with Distinct Platform Colors */
+    .platform-chip.active[data-source="pixabay"] {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .platform-chip.active[data-source="mixkit"] {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: #f97316;
+      color: #fb923c;
+    }
+
+    .platform-chip.active[data-source="myinstants"] {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: #ef4444;
+      color: #f87171;
+    }
+
+    .platform-chip.active[data-source="freesound"] {
+      background: rgba(34, 197, 94, 0.15);
+      border-color: #22c55e;
+      color: #4ade80;
+    }
+
+    /* Search Bar */
+    .search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .search-input {
+      width: 100%;
+      background: #111116;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 9px 36px 9px 36px;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .clear-btn {
+      position: absolute;
+      right: 10px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: none;
+    }
+
+    /* Categories Bar */
+    .categories-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+
+    .categories-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category-pill {
+      background: #1a1a22;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 5px 10px;
+      border-radius: 14px;
+      font-size: 11px;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .category-pill:hover {
+      color: var(--text-main);
+      background: #252532;
+    }
+
+    .category-pill.active {
+      background: var(--accent-blue);
+      color: white;
+      border-color: var(--accent-blue);
+      font-weight: 500;
+    }
+
+    /* Sounds List Container */
+    .sounds-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: #2d2d3d transparent;
+    }
+
+    .sounds-container::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sounds-container::-webkit-scrollbar-thumb {
+      background: #2d2d3d;
+      border-radius: 4px;
+    }
+
+    /* Sound Card */
+    .sound-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.15s;
+    }
+
+    .sound-card:hover {
+      background: var(--bg-card-hover);
+      border-color: #38384a;
+    }
+
+    .sound-card.playing {
+      border-color: var(--accent-green);
+      background: #192320;
+    }
+
+    /* Play/Pause Circle */
+    .play-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #282836;
+      border: 1px solid #3d3d50;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .play-circle:hover {
+      background: #38bdf8;
+      color: #0b1120;
+      transform: scale(1.05);
+    }
+
+    .sound-card[data-source="mixkit"] .play-circle {
+      color: #fb923c;
+    }
+    .sound-card[data-source="mixkit"] .play-circle:hover {
+      background: #fb923c;
+      color: #2b1100;
+    }
+
+    .sound-card[data-source="myinstants"] .play-circle {
+      color: #f87171;
+    }
+    .sound-card[data-source="myinstants"] .play-circle:hover {
+      background: #f87171;
+      color: #2d0000;
+    }
+
+    .sound-card[data-source="freesound"] .play-circle {
+      color: #4ade80;
+    }
+    .sound-card[data-source="freesound"] .play-circle:hover {
+      background: #4ade80;
+      color: #03280c;
+    }
+
+    .sound-card.playing .play-circle {
+      background: var(--accent-green) !important;
+      color: #042f2e !important;
+      border-color: var(--accent-green) !important;
+    }
+
+    /* Sound Info */
+    .sound-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .sound-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .sound-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Source Badges */
+    .badge-source {
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-source.pixabay {
+      background: #0284c7;
+      color: white;
+    }
+
+    .badge-source.mixkit {
+      background: #ea580c;
+      color: white;
+    }
+
+    .badge-source.myinstants {
+      background: #dc2626;
+      color: white;
+    }
+
+    .badge-source.freesound {
+      background: #16a34a;
+      color: white;
+    }
+
+    .duration-tag {
+      background: #282836;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      color: #94a3b8;
+    }
+
+    /* Action Buttons */
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .btn-add-playhead {
+      background: var(--accent-blue);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+    }
+
+    .btn-add-playhead:hover {
+      background: var(--accent-blue-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    }
+
+    .dropdown-container {
+      position: relative;
+    }
+
+    .btn-more {
+      background: #262634;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .btn-more:hover {
+      color: var(--text-main);
+      background: #323244;
+    }
+
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 32px;
+      background: #22222d;
+      border: 1px solid #37374a;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      z-index: 100;
+      min-width: 160px;
+      overflow: hidden;
+    }
+
+    .dropdown-menu.show {
+      display: block;
+    }
+
+    .dropdown-item {
+      padding: 8px 12px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      color: var(--text-main);
+      transition: background 0.15s;
+    }
+
+    .dropdown-item:hover {
+      background: #2e2e3d;
+      color: white;
+    }
+
+    /* Bottom Player Bar */
+    footer {
+      background: var(--bg-header);
+      border-top: 1px solid var(--border-color);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .player-play-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      border: none;
+      color: white;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .player-play-btn:hover {
+      background: var(--accent-blue-hover);
+    }
+
+    .player-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .player-title {
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .player-scrubber-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .player-time {
+      font-size: 10px;
+      font-family: monospace;
+      color: var(--text-muted);
+      width: 32px;
+    }
+
+    .player-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: #2e2e3e;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .player-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-blue);
+      cursor: pointer;
+    }
+
+    .volume-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .volume-slider {
+      width: 50px;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: #2e2e3e;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      cursor: pointer;
+    }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 70px;
+      right: 14px;
+      z-index: 1000;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: #1e1e28;
+      border: 1px solid #3b3b4f;
+      color: var(--text-main);
+      padding: 10px 14px;
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success i {
+      color: var(--accent-green);
+    }
+
+    .toast.error i {
+      color: var(--accent-red);
+    }
+
+    /* Empty and Loading State */
+    .state-msg {
+      text-align: center;
+      padding: 40px 16px;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent-blue);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .load-more-btn {
+      background: #1c1c26;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+
+    .load-more-btn:hover {
+      background: #262634;
+      border-color: #444458;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="status-row">
+      <div class="resolve-status" id="resolveStatusBadge" title="DaVinci Resolve Durumu">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="project-info" id="projectInfoText">Bağlantı kontrol ediliyor...</span>
+        <span class="timecode-badge" id="timecodeBadge" style="display: none;">00:00:00:00</span>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn-icon" id="refreshStatusBtn" title="Durumu Yenile">
+          <i class="fa-solid fa-arrows-rotate"></i>
+        </button>
+        <button class="btn-icon" id="openFolderBtn" title="İndirilenler Klasörünü Aç">
+          <i class="fa-regular fa-folder-open"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Platform Filter Toggles -->
+    <div class="filter-section">
+      <span class="filter-label"><i class="fa-solid fa-sliders"></i> Kaynaklar:</span>
+      <button class="platform-chip active" data-source="pixabay">
+        <i class="fa-solid fa-check"></i> Pixabay
+      </button>
+      <button class="platform-chip active" data-source="mixkit">
+        <i class="fa-solid fa-check"></i> Mixkit
+      </button>
+      <button class="platform-chip active" data-source="myinstants">
+        <i class="fa-solid fa-check"></i> MyInstants
+      </button>
+      <button class="platform-chip active" data-source="freesound">
+        <i class="fa-solid fa-check"></i> Freesound
+      </button>
+    </div>
+
+    <!-- Search Box -->
+    <div class="search-box">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text" class="search-input" id="searchInput" placeholder="Tüm platformlarda ara (whoosh, glitch, impact, meme, pop)...">
+      <button class="clear-btn" id="clearSearchBtn"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Global Categories -->
+    <div class="categories-bar" id="categoriesBar">
+      <!-- Injected by JS -->
+    </div>
+  </header>
+
+  <!-- Sounds List Container -->
+  <main class="sounds-container" id="soundsContainer">
+    <div class="state-msg">
+      <div class="spinner"></div>
+      <span>Tüm platformlar taranıyor...</span>
+    </div>
+  </main>
+
+  <!-- Bottom Player Bar -->
+  <footer>
+    <button class="player-play-btn" id="footerPlayBtn" title="Oynat / Durdur">
+      <i class="fa-solid fa-play"></i>
+    </button>
+
+    <div class="player-info">
+      <div class="player-title" id="footerTitle">Bir ses seçin veya arama yapın</div>
+      <div class="player-scrubber-row">
+        <span class="player-time" id="currentTimeText">00:00</span>
+        <input type="range" class="player-slider" id="scrubberSlider" value="0" min="0" max="100" step="0.1">
+        <span class="player-time" id="totalTimeText">00:00</span>
+      </div>
+    </div>
+
+    <div class="volume-box">
+      <i class="fa-solid fa-volume-high"></i>
+      <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="0.8">
+    </div>
+
+    <button class="btn-add-playhead" id="footerAddBtn" style="display: none;" title="Bu sesi oynatma kafasının olduğu yere ekle">
+      <i class="fa-solid fa-bolt"></i> İmlece Ekle
+    </button>
+  </footer>
+
+  <!-- Audio Element -->
+  <audio id="audioElement" preload="none"></audio>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // App State
+    let activeSources = new Set(["pixabay", "mixkit", "myinstants", "freesound"]);
+    let currentQuery = "";
+    let currentPage = 1;
+    let currentTrack = null;
+    let isPlaying = false;
+    let searchTimeout = null;
+
+    // Elements
+    const audio = document.getElementById("audioElement");
+    const soundsContainer = document.getElementById("soundsContainer");
+    const searchInput = document.getElementById("searchInput");
+    const clearSearchBtn = document.getElementById("clearSearchBtn");
+    const categoriesBar = document.getElementById("categoriesBar");
+    const statusDot = document.getElementById("statusDot");
+    const projectInfoText = document.getElementById("projectInfoText");
+    const timecodeBadge = document.getElementById("timecodeBadge");
+    const refreshStatusBtn = document.getElementById("refreshStatusBtn");
+    const openFolderBtn = document.getElementById("openFolderBtn");
+
+    // Footer Player Elements
+    const footerPlayBtn = document.getElementById("footerPlayBtn");
+    const footerTitle = document.getElementById("footerTitle");
+    const scrubberSlider = document.getElementById("scrubberSlider");
+    const currentTimeText = document.getElementById("currentTimeText");
+    const totalTimeText = document.getElementById("totalTimeText");
+    const volumeSlider = document.getElementById("volumeSlider");
+    const footerAddBtn = document.getElementById("footerAddBtn");
+
+    async function init() {
+      setupEventListeners();
+      await loadCategories();
+      await checkStatus();
+      await fetchSounds("", 1);
+      setInterval(checkStatus, 3000);
+    }
+
+    function setupEventListeners() {
+      // Platform Filter Toggles
+      document.querySelectorAll(".platform-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+          const src = chip.dataset.source;
+          if (activeSources.has(src)) {
+            // Do not allow deselecting all
+            if (activeSources.size === 1) {
+              showToast("En az bir platform seçili kalmalıdır", "error");
+              return;
+            }
+            activeSources.delete(src);
+            chip.classList.remove("active");
+            chip.querySelector("i").className = "fa-solid fa-xmark";
+          } else {
+            activeSources.add(src);
+            chip.classList.add("active");
+            chip.querySelector("i").className = "fa-solid fa-check";
+          }
+          currentPage = 1;
+          fetchSounds(currentQuery, 1);
+        });
+      });
+
+      // Search typing
+      searchInput.addEventListener("input", (e) => {
+        const val = e.target.value.trim();
+        clearSearchBtn.style.display = val ? "block" : "none";
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          currentQuery = val;
+          currentPage = 1;
+          highlightCategory(val);
+          fetchSounds(currentQuery, 1);
+        }, 400);
+      });
+
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          clearTimeout(searchTimeout);
+          currentQuery = searchInput.value.trim();
+          currentPage = 1;
+          fetchSounds(currentQuery, 1);
+        }
+      });
+
+      clearSearchBtn.addEventListener("click", () => {
+        searchInput.value = "";
+        clearSearchBtn.style.display = "none";
+        currentQuery = "";
+        currentPage = 1;
+        highlightCategory("");
+        fetchSounds("", 1);
+      });
+
+      refreshStatusBtn.addEventListener("click", () => {
+        checkStatus(true);
+      });
+
+      openFolderBtn.addEventListener("click", async () => {
+        try {
+          await fetch("/api/open-folder", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({})
+          });
+          showToast("İndirilenler klasörü açıldı", "success");
+        } catch (e) {
+          showToast("Klasör açılamadı", "error");
+        }
+      });
+
+      // Audio Event Listeners
+      audio.addEventListener("timeupdate", () => {
+        if (!audio.duration) return;
+        const current = audio.currentTime;
+        const total = audio.duration;
+        scrubberSlider.value = (current / total) * 100;
+        currentTimeText.textContent = formatSeconds(current);
+        totalTimeText.textContent = formatSeconds(total);
+      });
+
+      audio.addEventListener("play", () => {
+        isPlaying = true;
+        updatePlayerUI();
+      });
+
+      audio.addEventListener("pause", () => {
+        isPlaying = false;
+        updatePlayerUI();
+      });
+
+      audio.addEventListener("ended", () => {
+        isPlaying = false;
+        scrubberSlider.value = 0;
+        currentTimeText.textContent = "00:00";
+        updatePlayerUI();
+      });
+
+      scrubberSlider.addEventListener("input", (e) => {
+        if (!audio.duration) return;
+        audio.currentTime = (e.target.value / 100) * audio.duration;
+      });
+
+      volumeSlider.addEventListener("input", (e) => {
+        audio.volume = e.target.value;
+      });
+
+      footerPlayBtn.addEventListener("click", () => {
+        if (!currentTrack) return;
+        togglePlay(currentTrack);
+      });
+
+      footerAddBtn.addEventListener("click", () => {
+        if (!currentTrack) return;
+        addSound(currentTrack, "playhead");
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".dropdown-container")) {
+          document.querySelectorAll(".dropdown-menu").forEach(m => m.classList.remove("show"));
+        }
+      });
+    }
+
+    async function checkStatus(manual = false) {
+      try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        if (data.connected && data.project_open) {
+          statusDot.className = "status-dot online";
+          projectInfoText.textContent = data.project_name;
+          if (data.has_timeline && data.timecode) {
+            timecodeBadge.style.display = "inline-block";
+            timecodeBadge.textContent = data.timecode;
+          } else {
+            timecodeBadge.style.display = "none";
+          }
+          if (manual) showToast(`DaVinci Resolve bağlı: ${data.project_name}`, "success");
+        } else if (data.connected) {
+          statusDot.className = "status-dot";
+          projectInfoText.textContent = "Proje açık değil";
+          timecodeBadge.style.display = "none";
+        } else {
+          statusDot.className = "status-dot";
+          projectInfoText.textContent = "Resolve Bağlı Değil";
+          timecodeBadge.style.display = "none";
+        }
+      } catch (err) {
+        statusDot.className = "status-dot";
+        projectInfoText.textContent = "Bağlantı Hatası";
+      }
+    }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/categories");
+        const cats = await res.json();
+        categoriesBar.innerHTML = "";
+        cats.forEach((c, idx) => {
+          const pill = document.createElement("button");
+          pill.className = `category-pill ${idx === 0 ? "active" : ""}`;
+          pill.textContent = c.label;
+          pill.dataset.query = c.query;
+          pill.addEventListener("click", () => {
+            document.querySelectorAll(".category-pill").forEach(p => p.classList.remove("active"));
+            pill.classList.add("active");
+            currentQuery = c.query;
+            searchInput.value = c.query;
+            clearSearchBtn.style.display = c.query ? "block" : "none";
+            currentPage = 1;
+            fetchSounds(c.query, 1);
+          });
+          categoriesBar.appendChild(pill);
+        });
+      } catch (e) {
+        console.error("Categories failed", e);
+      }
+    }
+
+    function highlightCategory(query) {
+      document.querySelectorAll(".category-pill").forEach(p => {
+        if (p.dataset.query.toLowerCase() === query.toLowerCase()) {
+          p.classList.add("active");
+        } else {
+          p.classList.remove("active");
+        }
+      });
+    }
+
+    // Unified Fetch Across All Active Sources
+    async function fetchSounds(query, page = 1, append = false) {
+      if (!append) {
+        soundsContainer.innerHTML = `
+          <div class="state-msg">
+            <div class="spinner"></div>
+            <span>Tüm platformlar taranıyor (${Array.from(activeSources).join(", ")})...</span>
+          </div>
+        `;
+      }
+
+      const sourcesParam = Array.from(activeSources).join(",");
+
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&sources=${sourcesParam}&page=${page}`);
+        const data = await res.json();
+
+        if (!append) {
+          soundsContainer.innerHTML = "";
+        } else {
+          const existingBtn = document.getElementById("loadMoreBtn");
+          if (existingBtn) existingBtn.remove();
+        }
+
+        if (!data.items || data.items.length === 0) {
+          if (!append) {
+            soundsContainer.innerHTML = `
+              <div class="state-msg">
+                <i class="fa-regular fa-face-frown" style="font-size: 24px;"></i>
+                <span>Seçili platformlarda sonuç bulunamadı.</span>
+              </div>
+            `;
+          }
+          return;
+        }
+
+        data.items.forEach(item => {
+          const card = createSoundCard(item);
+          soundsContainer.appendChild(card);
+        });
+
+        // Load More Button
+        const loadMore = document.createElement("button");
+        loadMore.id = "loadMoreBtn";
+        loadMore.className = "load-more-btn";
+        loadMore.innerHTML = '<i class="fa-solid fa-chevron-down"></i> Daha Fazla Yükle';
+        loadMore.addEventListener("click", () => {
+          loadMore.innerHTML = '<div class="spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Yükleniyor...';
+          currentPage++;
+          fetchSounds(currentQuery, currentPage, true);
+        });
+        soundsContainer.appendChild(loadMore);
+
+      } catch (err) {
+        soundsContainer.innerHTML = `
+          <div class="state-msg">
+            <i class="fa-solid fa-triangle-exclamation" style="color: var(--accent-red); font-size: 24px;"></i>
+            <span>Sesler yüklenirken hata oluştu: ${err.message}</span>
+          </div>
+        `;
+      }
+    }
+
+    function createSoundCard(item) {
+      const card = document.createElement("div");
+      card.className = "sound-card";
+      card.dataset.source = item.source || "general";
+      card.id = `card-${item.id}`;
+
+      const sourceName = item.source || "sfx";
+      const sourceClass = sourceName.toLowerCase();
+
+      card.innerHTML = `
+        <div class="play-circle" title="Önizle / Durdur">
+          <i class="fa-solid fa-play"></i>
+        </div>
+
+        <div class="sound-details">
+          <div class="sound-title" title="${item.name}">${item.name}</div>
+          <div class="sound-meta">
+            <span class="badge-source ${sourceClass}">${sourceName}</span>
+            <span class="duration-tag">${item.duration_formatted}</span>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button class="btn-add-playhead" title="İmleç konumuna ekle">
+            <i class="fa-solid fa-bolt"></i> İmlece Ekle
+          </button>
+
+          <div class="dropdown-container">
+            <button class="btn-more" title="Diğer İşlemler">
+              <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+            <div class="dropdown-menu">
+              <div class="dropdown-item" data-action="append">
+                <i class="fa-solid fa-forward-step"></i> Sona Ekle
+              </div>
+              <div class="dropdown-item" data-action="pool_only">
+                <i class="fa-solid fa-folder-plus"></i> Media Pool'a Ekle
+              </div>
+              <div class="dropdown-item" data-action="open_folder">
+                <i class="fa-regular fa-folder-open"></i> Klasörde Aç
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Play / Pause toggle
+      const playBtn = card.querySelector(".play-circle");
+      playBtn.addEventListener("click", () => togglePlay(item));
+
+      // Add to Playhead
+      const addBtn = card.querySelector(".btn-add-playhead");
+      addBtn.addEventListener("click", () => addSound(item, "playhead", addBtn));
+
+      // Dropdown toggle
+      const moreBtn = card.querySelector(".btn-more");
+      const menu = card.querySelector(".dropdown-menu");
+      moreBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        document.querySelectorAll(".dropdown-menu").forEach(m => {
+          if (m !== menu) m.classList.remove("show");
+        });
+        menu.classList.toggle("show");
+      });
+
+      menu.querySelectorAll(".dropdown-item").forEach(itemEl => {
+        itemEl.addEventListener("click", (e) => {
+          e.stopPropagation();
+          menu.classList.remove("show");
+          const action = itemEl.dataset.action;
+          if (action === "open_folder") {
+            downloadAndOpen(item);
+          } else {
+            addSound(item, action);
+          }
+        });
+      });
+
+      return card;
+    }
+
+    function togglePlay(item) {
+      if (currentTrack && currentTrack.id === item.id) {
+        if (isPlaying) {
+          audio.pause();
+        } else {
+          audio.play();
+        }
+      } else {
+        currentTrack = item;
+        audio.src = item.audio_url;
+        footerTitle.textContent = `[${item.source.toUpperCase()}] ${item.name}`;
+        footerAddBtn.style.display = "flex";
+        audio.play().catch(err => console.error("Play error:", err));
+      }
+      updatePlayerUI();
+    }
+
+    function updatePlayerUI() {
+      document.querySelectorAll(".sound-card").forEach(c => {
+        c.classList.remove("playing");
+        const icon = c.querySelector(".play-circle i");
+        if (icon) icon.className = "fa-solid fa-play";
+      });
+
+      if (currentTrack) {
+        const activeCard = document.getElementById(`card-${currentTrack.id}`);
+        if (activeCard && isPlaying) {
+          activeCard.classList.add("playing");
+          const icon = activeCard.querySelector(".play-circle i");
+          if (icon) icon.className = "fa-solid fa-pause";
+        }
+      }
+
+      footerPlayBtn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+    }
+
+    async function addSound(item, mode = "playhead", buttonElement = null) {
+      let origHtml = "";
+      if (buttonElement) {
+        origHtml = buttonElement.innerHTML;
+        buttonElement.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:2px;display:inline-block;margin-right:4px;"></div> Ekleniyor...';
+        buttonElement.disabled = true;
+      }
+
+      try {
+        const res = await fetch("/api/action", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            audio_url: item.audio_url,
+            filename: item.filename,
+            title: item.name,
+            source: item.source,
+            mode: mode
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message || `'${item.name}' başarıyla eklendi!`, "success");
+          checkStatus();
+        } else {
+          showToast(`Hata: ${data.error || "Eklenemedi"}`, "error");
+        }
+      } catch (err) {
+        showToast(`Bağlantı hatası: ${err.message}`, "error");
+      } finally {
+        if (buttonElement) {
+          buttonElement.innerHTML = origHtml;
+          buttonElement.disabled = false;
+        }
+      }
+    }
+
+    async function downloadAndOpen(item) {
+      try {
+        const res = await fetch("/api/action", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            audio_url: item.audio_url,
+            filename: item.filename,
+            title: item.name,
+            source: item.source,
+            mode: "pool_only"
+          })
+        });
+        const data = await res.json();
+        if (data.local_path) {
+          await fetch("/api/open-folder", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ local_path: data.local_path })
+          });
+        }
+      } catch (e) {
+        showToast("Dosya açılamadı", "error");
+      }
+    }
+
+    function showToast(message, type = "success") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      toast.className = `toast ${type}`;
+      const icon = type === "success" ? "fa-circle-check" : "fa-triangle-exclamation";
+      toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => toast.classList.add("show"), 10);
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function formatSeconds(sec) {
+      const s = Math.floor(sec || 0);
+      const m = Math.floor(s / 60);
+      const remain = s % 60;
+      return `${String(m).padStart(2, "0")}:${String(remain).padStart(2, "0")}`;
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>

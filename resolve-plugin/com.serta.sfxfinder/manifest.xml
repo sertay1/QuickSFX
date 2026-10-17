@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<BlackmagicDesign>
+    <Plugin>
+        <Id>com.serta.sfxfinder</Id>
+        <Name>QuickSFX</Name>
+        <Version>2.0</Version>
+        <Description>Pixabay, Mixkit, MyInstants ve Freesound seslerini ara, dinle, timeline'a ekle.</Description>
+        <FilePath>main.js</FilePath>
+    </Plugin>
+</BlackmagicDesign>
