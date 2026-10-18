@@ -1,4 +1,5 @@
-# QuickSFX ⚡
+# <div align="center">QuickSFX</div>
+
 
 <p align="center">
   <img src="resolve-plugin/com.serta.sfxfinder/img/logo.png" alt="QuickSFX Logo" width="128" height="128">
